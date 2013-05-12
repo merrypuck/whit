@@ -332,7 +332,7 @@ def hello_monkey():
                 twilioOutput = "Sorry, no matches came up for your stock query, please refine your search."
 
         elif twilioInput.lower() == 'h':
-            twilioOutput = "Send the name of a person, a company, or a stock ticker code. Commands:\np:'person', c:'company', s:'Stock', w:'wikipedia'\np:Bill Gates\nc:Google\nn:google\ns:aapl\nw:obama" 
+            twilioOutput = "Send the name of a person, a company, or a stock ticker code. Commands:\np'person', c'company', s'Stock', w'wikipedia'\npBill Gates\ncGoogle\nngoogle\nsaapl\nwobama" 
         
         else:
             try:
@@ -344,8 +344,6 @@ def hello_monkey():
             twilioOutput = parseWiki(twilioInput)
         except:
             "Please enter a valid wiki search query. Type * for help."
-
-#twilioOutput = "Input is of any form. Special commands include P:'person', C:'company', S:'Stock', W:'wikiSearch'\nP:Bill Gates\nC:Google\nC#:google\n S:aapl\nW:new york"
     
     '''
     account_sid = "ACa1c928ab9eb750ba1fb4ed0953f0f032"
