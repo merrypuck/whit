@@ -291,41 +291,43 @@ def hello_monkey():
     
     inputString = text_body[0]
     firstLetter = text_body[0][0]
-    firstLetters = text_body[0][:2]
+
+    #   The command code
+    firstLetters = text_body[0][:1]
 
     # p for person
     # c for company 
-    # # for company number
+    # n for company number
     # w for wiki
     # text_body[0] is first name, text_body[1] is last name
     if inputString.__len__() > 0:
-        if firstLetters.lower() == 'p:':
+        if firstLetters.lower() == 'p':
             try:
                 twilioOutput = queryCrunchBaseForPerson(text_body[0][2:].lower(), text_body[1].lower())
             except:
                 twilioOutput = "Sorry, no one named " + text_body[0][2:] + " exists in crunchbase."
 
-        elif firstLetters.lower() == 'c:':
+        elif firstLetters.lower() == 'c':
             try:
-                twilioOutput = queryCrunchBaseForCompanySummary(twilioInput[2:])
+                twilioOutput = queryCrunchBaseForCompanySummary(twilioInput[1:])
             except:
                 twilioOutput = "Sorry, no company named '" + twilioInput[2:] + "' exists in crunchbase."
 
-        elif inputString[:3] == 'c#:':
+        elif inputString[:3] == 'n':
             try:
-                twilioOutput = queryCrunchBaseForCompanyNumber(inputString[1:])
+                twilioOutput = queryCrunchBaseForCompanyNumber(twilioInput[1:])
             except:
                 twilioOutput = "Sorry, no number exists for this company." 
 
-        elif firstLetters.lower() == 'w:':
+        elif firstLetters.lower() == 'w':
             try: 
-                twilioOutput = parseWiki(twilioInput[2:])
+                twilioOutput = parseWiki(twilioInput[1:])
             except:
                 twilioOutput = "Sorry, no matches came up for your wiki query, please refine your search."
 
-        elif firstLetters.lower() == 's:':
+        elif firstLetters.lower() == 's':
             try:
-                twilioOutput = parseStock(inputString[2:])
+                twilioOutput = parseStock(inputString[1:])
             except:
                 twilioOutput = "Sorry, no matches came up for your stock query, please refine your search."
 
@@ -336,12 +338,12 @@ def hello_monkey():
             try:
                 twilioOutput = parseWiki(twilioInput)
             except:
-                "Please enter a valid wiki search query. Type * for more options."
+                "Please enter a valid wiki search query. Type * for help."
     else:
         try:
             twilioOutput = parseWiki(twilioInput)
         except:
-            "Please enter a valid wiki search query. Type * for more options."
+            "Please enter a valid wiki search query. Type * for help."
 
 #twilioOutput = "Input is of any form. Special commands include P:'person', C:'company', S:'Stock', W:'wikiSearch'\nP:Bill Gates\nC:Google\nC#:google\n S:aapl\nW:new york"
     
