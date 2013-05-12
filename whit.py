@@ -75,7 +75,7 @@ def summaryFromURL(url):
     entry = JSONFromURL(url)
 
     #   Retrieve the overview
-    entryText = entry["overview"]).get_text()
+    entryText = entry["overview"].get_text()
 
     #   Ensure the overview is well formed
     overview = BeautifulSoup(entryText)
@@ -94,7 +94,7 @@ def phoneNumberFromURL(url):
     entry = JSONFromURL(url)
 
     #   Retrieve the overview
-    number = entry["phone_number"]).get_text()
+    number = entry["phone_number"].get_text()
 
     return number
 
