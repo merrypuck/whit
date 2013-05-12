@@ -1,10 +1,10 @@
-from flask import Flask, request, redirect
-import twilio.twiml
-from twilio.rest import TwilioRestClient
-from urllib import urlopen
-import json
-from getSummary import getSummary
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup               # HTML handling
+from flask import Flask, request, redirect  # Routing
+import getSummary                           # A home grown truncation tool
+import json                                 # Python's built in JSON library
+import twilio.twiml                         # Handle twilio responses
+from twilio.rest import TwilioRestClient    # Handle twilio requests
+from urllib import urlopen                  # General Python requests
 
 #   CrunchBase API Key
 api_key = '6susy5mbbncvm45hsav4rabd'
@@ -15,140 +15,227 @@ access_token = '794e02fd047d7fcc0c44543742d0f471e2f9ebc8'
 #   Required for Google App Engine's app.yaml
 app = Flask(__name__)
 
-'''
-   Requests information about a person from CrunchBase.
-   Takes two strings:pi
+# ------------------------------------------------------
+#    Utility method to get a bitly shortlink from a URL
+# ------------------------------------------------------
 
-   firstName: The person's first name.
-   lastName: The person's last name.
+def getShortlink(url):
 
-''' 
-
-def parsePerson(firstName, lastName):
+    #   Prep a link to the bitly 
+    shortapi = "https://api-ssl.bitly.com/v3/shorten?access_token=" + access_token + "&longUrl=" + url
     
+    #   Ask bit.ly for the shortlink
+    shortLinkResponse = json.loads( urlopen(shortapi).read() )
+
+    #   Pull the result out of the response dictionary
+    fullShortLink = shortLinkResponse['data']['url']
+
+    #   Shorten the shortlink, haha!
+    shortLinkToDisplay = str(shortLink)[7:15]+str(shortLink)[15:]
+
+    # return
+    return shortLinkToDisplay
+
+# --------------------------
+#   Replace spaces with %20
+# --------------------------
+
+def sanitize(url):
+
+    #   Break up a URL by spaces
+    url = url.split(' ');    
+
+    # Put the %20 in
+    url = '%20'.join(url)
+
+    return str(url)
+
+# -------------------------------------------------------
+#   Retrieve the contents of a URL and return it as JSON
+# -------------------------------------------------------
+
+def JSONFromURL(url):
+
+    #   Read the URL contents as a string
+    urlContents = urlopen(url).read()
+
+    #   Convert the string to JSON
+    json = json.loads(urlContents)
+
+    #   Return 
+    return json
+
+# --------------------------------------------------------
+#   Retrieve the contents of a URL and return the summary
+# --------------------------------------------------------
+
+def summaryFromURL(url):
+    
+    #   Grab the JSON
+    entry = JSONFromURL(url)
+
+    #   Retrieve the overview
+    entryText = entry["overview"]).get_text()
+
+    #   Ensure the overview is well formed
+    overview = BeautifulSoup(entryText)
+
+    #   Summarize and return the overview
+    return getSummary(overview)
+
+
+# -------------------------------------------------------------
+#   Retrieve the contents of a URL and return the phone number
+# -------------------------------------------------------------
+
+def phoneNumberFromURL(url):
+
+    #   Grab the JSON
+    entry = JSONFromURL(url)
+
+    #   Retrieve the overview
+    number = entry["phone_number"]).get_text()
+
+    return number
+
+
+# ------------------------------------------------------
+#   Requests information about a person from CrunchBase.
+#   
+#   queryCrunchBaseForPerson takes two string arguments:
+#
+#   firstName: The person's first name.
+#   lastName: The person's last name.
+# ------------------------------------------------------
+
+def queryCrunchBaseForPerson(firstName, lastName):
+
+    # -----------------------------------------
+    #   Retrieve the pernalink from CrunchBase
+    # -----------------------------------------
+
     #   Define a URL to query - Returns a permalink for the relevant username. Also returns a relevant website, if applicable.
     summaryURL = 'http://api.crunchbase.com/v/1/people/permalink?first_name=' + firstName + '&last_name=' +lastName + '&api_key=' + api_key
     
     #   The URL returns a summary as a string, convert it to a JSON object
-    queryResult = urlopen(summaryURL).read()
-    summary = json.loads(queryResult)
+    summary = JSONFromURL(summaryURL)
     
     #   Read out the slug from the dictionary 
     slug = summary['permalink']
     
-    #   This URL accesses the CrunchBase entry URL
+    # -----------------------
+    #   Generate a shortlink
+    # -----------------------
+
+    shortLinkToDisplay = getShortlink(summary['crunchbase_url'])
+
+    # -----------------------------------
+    #   Retrieve and summarize the entry
+    # -----------------------------------
+
+    #   The CrunchBase entry URL
     entryURL = 'http://api.crunchbase.com/v/1/person/' + slug + '.js?api_key=' + api_key
     
-    #   The entry as a string
-    entryString = urlopen(entryURL).read()
-    entry = json.loads(entryString)
-    
-    #
-    #   Adds bitly shortlink
-    #
+    #   Summarize the overview
+    entrySummary = summaryFromURL(entryURL)
 
-    #   Grab the CrunchBase URL
-    crunchurl = summary['crunchbase_url']
+    # ---------
+    #   Return
+    # ---------
 
-    #   Prep a link to the 
-    shortapi = "https://api-ssl.bitly.com/v3/shorten?access_token=" + access_token + "&longUrl=" + crunchurl
-    shortLink = json.loads( urlopen(shortapi).read() )
-    shortened = shortLink['data']['url']
+    return entrySummary + shortLinkToDisplay
     
-    #return first ~140 characters with a bitly shortlink
-    return getSummary( BeautifulSoup( entry["overview"] ).get_text() ) + str(shortened)[7:15]+str(shortened)[15:]
 
-def parseCompany(company):
-    #if company multiple words, add '%20' betweeen words
-    #import pdb; pdb.set_trace()
-    camt = company.split(' ')
-    if camt.__len__() > 1:
-        bamt = '%20'.join(camt)
-        url = 'http://api.crunchbase.com/v/1/companies/permalink?name=' + str(bamt) + '&api_key=6susy5mbbncvm45hsav4rabd'
+# -------------------------------------------------
+#   Retrieve a company profile from CrunchBase
+# -------------------------------------------------
 
-    else:
-        url = 'http://api.crunchbase.com/v/1/companies/permalink?name=' + str(company) + '&api_key=6susy5mbbncvm45hsav4rabd'
-                
-    #r is a json file written as a string
-    r = urlopen(url).read()
+def queryCrunchBaseForCompanySummary(company):
+
+    # -------------------------------------------------
+    #   Retrieve the summary permalink from CrunchBase
+    # -------------------------------------------------
+
+    #   Sanitize the name before passing to the CrunchBase API
+    company = sanitize(company)
+
+    #   Construct a summary URL
+    summaryURL = 'http://api.crunchbase.com/v/1/companies/permalink?name=' + company + '&api_key=' + api_key
+
+    #   Convert the summary to dictionary
+    summary = JSONFromURL(summaryURL)
+
+    #   Grab the permalink
+    slug = summary['permalink']
     
-    #convert r to dictionary
-    dict1 = json.loads(r)
-    #perma is permalink to specfic page
-    #try:
-     #   dict1['permalink']
-    #except NameError:
-    a = dict1['permalink']
-    url2 = 'http://api.crunchbase.com/v/1/company/' + a + '.js?api_key=6susy5mbbncvm45hsav4rabd'
-    f = urlopen(url2).read()
+    # -----------------------
+    #   Generate a shortlink
+    # -----------------------
+
+    shortLinkToDisplay = getShortlink(summary['crunchbase_url'])
+
+    # -----------------------------------
+    #   Retrieve and summarize the entry
+    # -----------------------------------
+
+    #   Construct a URL to the actual CrunchBase Profile
+    entryURL = 'http://api.crunchbase.com/v/1/company/' + slug + '.js?api_key=' + api_key
     
-    #load it as a json ( equivalent to json.loads(r) )
-    dict2 = json.loads(f)
-    
-    #   adds bitly shortlink
-    crunchurl = dict2['crunchbase_url']
-    shortapi = "https://api-ssl.bitly.com/v3/shorten?access_token=794e02fd047d7fcc0c44543742d0f471e2f9ebc8&longUrl=" + crunchurl
-    shortLink = json.loads( urlopen(shortapi).read() )
-    shortened = shortLink['data']['url']
-    return getSummary( BeautifulSoup( dict2["overview"] ).get_text() ) + str(shortened)[7:15]+str(shortened)[15:]
+    #   Summarize the overview
+    entrySummary = summaryFromURL(entryURL)
+
+    # ---------
+    #   Return
+    # ---------
+
+    return entrySummary + shortLinkToDisplay
 
 
-def parseCompanyNumber(company):
-    #if company multiple words, add '%20' betweeen words
-    camt = ""
-    if company.split(" ").__len__() >= 2:
-        camt = company.split(" ")[0]
-        for i in range(1, company.__len__()):
-             camt = camt + '%20' + company.split(" ")[i]
+# --------------------------------------------------
+#   Retrieve a company phone number from CrunchBase
+# --------------------------------------------------
 
-    url = 'http://api.crunchbase.com/v/1/companies/permalink?name=' + str(camt) + '&api_key=6susy5mbbncvm45hsav4rabd'
-    
-    #r is a json file written as a string
-    r = urlopen(url).read()
-    
-    #convert r to dictionary
-    dict1 = json.loads(r)
-    
-    #go to permalink and get overview
-    url2 = 'http://api.crunchbase.com/v/1/company/' + dict1['permalink'] + '.js?api_key=6susy5mbbncvm45hsav4rabd'
-    f = urlopen(url2).read()
-    
-    #load it as a json ( equivalent to json.loads(r) )
-    dict2 = json.loads(f)
-    
-    crunchurl = dict1['crunchbase_url']
-    shortapi = "https://api-ssl.bitly.com/v3/shorten?access_token=794e02fd047d7fcc0c44543742d0f471e2f9ebc8&longUrl=" + crunchurl
-    shortened = shortapi['url']
-    
-    return "%s: %s %s" % (camt,dict2['phone_number',shortapi])
+def queryCrunchBaseForCompanyNumber(company):
 
-"""def parseSearch(search):
+    # -------------------------------------------------
+    #   Retrieve the summary permalink from CrunchBase
+    # -------------------------------------------------
 
-    url = 'http://api.crunchbase.com/v/1/search.js?query=' + str(search) + '&api_key=6susy5mbbncvm45hsav4rabd'
+    #   Sanitize the company
+    company = sanitize(company)
 
-    r = urlopen(url).read()
-
-    dict1 = json.loads(r)
-
-    dict1Namespace = dict1['results'][0]['namespace']
-    dict1Overview = dict1['results'][0]['overview']
-    dict1Permalink = dict1['results'][0]['permalink']
-
-    if dict1Namespace == 'company' and dict1Overview != 'null' and dict1Overview.__len__() > 0:
-        url2 = 'http://api.crunchbase.com/v/1/company/' + dict1Permalink + '.js?api_key=6susy5mbbncvm45hsav4rabd'
-    elif dict1Namespace == 'person' and dict1Overview != 'null' and dict1Overview.__len__() > 0:
-        url2 = 'http://api.crunchbase.com/v/1/person/' + dict1Permalink + '.js?api_key=6susy5mbbncvm45hsav4rabd'
+    #   summary URL
+    summaryURL = 'http://api.crunchbase.com/v/1/companies/permalink?name=' + company + '&api_key=' + api_key
     
-    f = urlopen(url2).read()
-    dict2 = json.loads(f)
-    crunchurl = dict1['results'][0]['crunchbase_url']
-    shortapi = "https://api-ssl.bitly.com/v3/shorten?access_token=794e02fd047d7fcc0c44543742d0f471e2f9ebc8&longUrl=crunchurl"
-    shortened = shortapi['url']
+    #   Convert the summary to dictionary
+    summary = JSONFromURL(summaryURL)
+
+    #   Grab the permalink slug
+    slug = summary['permalink']
+
+    # -----------------------
+    #   Generate a shortlink
+    # -----------------------
+
+    shortLinkToDisplay = getShortlink(summary['crunchbase_url'])
+        
+    # -----------------------------------
+    #   Retrieve and summarize the entry
+    # -----------------------------------
+
+    entryURL = 'http://api.crunchbase.com/v/1/company/' + slug + '.js?api_key=' + api_key
     
-    return getSummary( BeautifulSoup( dict1Overview ).get_text() ) + str(shortened)[7:15]+str(shortened)[15:]
-"""
+    #   Summarize the overview
+    number = phoneNumberFromURL(entryURL)
+    
+    # ---------
+    #   Return
+    # ---------
+
+    return company + ': ' + number
+
 def parseWiki(search):
-    #import pdb; pdb.set_trace()
+
     url = 'http://en.wikipedia.org/w/api.php?format=json&action=opensearch&search=' + search + '&prop=revisions&rvprop=content'
 
     r = urlopen(url).read()
@@ -214,19 +301,19 @@ def hello_monkey():
     if inputString.__len__() > 0:
         if firstLetters.lower() == 'p:':
             try:
-                twilioOutput = parsePerson(text_body[0][2:].lower(), text_body[1].lower())
+                twilioOutput = queryCrunchBaseForPerson(text_body[0][2:].lower(), text_body[1].lower())
             except:
                 twilioOutput = "Sorry, no one named " + text_body[0][2:] + " exists in crunchbase."
 
         elif firstLetters.lower() == 'c:':
             try:
-                twilioOutput = parseCompany(twilioInput[2:])
+                twilioOutput = queryCrunchBaseForCompanySummary(twilioInput[2:])
             except:
                 twilioOutput = "Sorry, no company named '" + twilioInput[2:] + "' exists in crunchbase."
 
         elif inputString[:3] == 'c#:':
             try:
-                twilioOutput = parseCompanyNumber(inputString[1:])
+                twilioOutput = queryCrunchBaseForCompanyNumber(inputString[1:])
             except:
                 twilioOutput = "Sorry, no number exists for this company." 
 
