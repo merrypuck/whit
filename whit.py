@@ -293,7 +293,7 @@ def hello_monkey():
     firstLetter = text_body[0][0]
 
     #   The command code
-    firstLetters = text_body[0][:1]
+    firstLetters = text_body[0][:2]
 
     # p for person
     # c for company 
@@ -307,32 +307,32 @@ def hello_monkey():
             except:
                 twilioOutput = "Sorry, no one named " + text_body[0][2:] + " exists in crunchbase."
 
-        elif firstLetters.lower() == 'c':
+        elif firstLetters.lower() == 'c:':
             try:
                 twilioOutput = queryCrunchBaseForCompanySummary(twilioInput[1:])
             except:
                 twilioOutput = "Sorry, no company named '" + twilioInput[2:] + "' exists in crunchbase."
 
-        elif inputString[:3] == 'n':
+        elif inputString[:3] == 'n:':
             try:
                 twilioOutput = queryCrunchBaseForCompanyNumber(twilioInput[1:])
             except:
                 twilioOutput = "Sorry, no number exists for this company." 
 
-        elif firstLetters.lower() == 'w':
+        elif firstLetters.lower() == 'w:':
             try: 
                 twilioOutput = parseWiki(twilioInput[1:])
             except:
                 twilioOutput = "Sorry, no matches came up for your wiki query, please refine your search."
 
-        elif firstLetters.lower() == 's':
+        elif firstLetters.lower() == 's:':
             try:
                 twilioOutput = parseStock(inputString[1:])
             except:
                 twilioOutput = "Sorry, no matches came up for your stock query, please refine your search."
 
-        elif twilioInput.lower() == 'h':
-            twilioOutput = "Send the name of a person, a company, or a stock ticker code. Commands:\np'person', c'company', s'Stock', w'wikipedia'\npBill Gates\ncGoogle\nngoogle\nsaapl\nwobama" 
+        elif twilioInput.lower() == 'h:':
+            twilioOutput = "Send the name of a person, a company, or a stock ticker code. Commands:\np'person', c:'company', s:'Stock', w:'wikipedia'\npBill Gates\nc:Google\nngoogle\ns:aapl\nw:obama" 
         
         else:
             try:
