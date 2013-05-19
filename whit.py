@@ -9,6 +9,12 @@ from urllib import urlopen                  # General Python requests
 #   Required for Google App Engine's app.yaml
 app = Flask(__name__)
 
+-#   CrunchBase API Key - Add yours here
+-api_key = ''
+-
+-#   Bit.ly API Key - Add yours here
+-access_token = ''
+
 # ------------------------------------------------------
 #    Utility method to get a bitly shortlink from a URL
 # ------------------------------------------------------
