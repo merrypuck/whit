@@ -6,12 +6,6 @@ import twilio.twiml                         # Handle twilio responses
 from twilio.rest import TwilioRestClient    # Handle twilio requests
 from urllib import urlopen                  # General Python requests
 
-#   CrunchBase API Key
-api_key = '6susy5mbbncvm45hsav4rabd'
-
-#   Bit.ly API Key
-access_token = '794e02fd047d7fcc0c44543742d0f471e2f9ebc8'
-
 #   Required for Google App Engine's app.yaml
 app = Flask(__name__)
 
